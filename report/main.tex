@@ -1,0 +1,131 @@
+\documentclass{article}
+
+
+% if you need to pass options to natbib, use, e.g.:
+\PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2024
+
+
+% ready for submission
+\usepackage[preprint]{neurips_2024}
+
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2024}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+    % \usepackage[final]{neurips_2024}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2024}
+
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+
+
+\title{CSE 250A Final Project\\Predicting Coding and Noncoding Sequences in Eukaryotic DNA}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{
+    Tej Gaonkar \\
+    \texttt{tgaonkar@ucsd.edu} \\
+    \And
+    Connor McGartoll \\
+    \texttt{cmcgartoll@ucsd.edu} \\
+    \And
+    Justin Vincent Shen \\
+    \texttt{jvshen@ucsd.edu}\\
+    \And
+    Jared Ziv\\
+    \texttt{j1ziv@ucsd.edu} \\
+  % examples of more authors
+  % \AND
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+}
+
+
+\begin{document}
+
+
+\maketitle
+
+
+\section{Problem Description}
+
+A fundamental task in computational biology is to identify functional regions within genomic DNA. One of the most critical distinctions is between coding sequences (CDS) and noncoding sequences (NCS). CDS are eventually translated into proteins, while NCS includes sequences such as introns, UTRs, promoters, etc.
+
+The accurate classification of these regions is important for many tasks in biological fields, such as comparative genomics, genome annotations, gene predictions, etc. Considering this, the goal of this project is to develop a Hidden Markov Model (HMM) which accurately classifies a DNA sequence as a CDS or NCS. We apply an HMM because it reflects DNA structure well, in the sense that it contains a sequence of nucleotide observations which have unique functions, reflected by the hidden states. Note that as a simplification, we assume each nucleotide is independent and identically distributed. This is not necessarily always true in reality, because certain parts of DNA sequences may have varying ratios of nucleotides (e.g. sequences whose GC content is higher.) But for this model, the IID assumption is not too large a leap in logic, and thus it will be applied to allow the application of a HMM.
+
+\section{Data Sourcing and Processing}
+
+\subsection{Sourcing}
+Our dataset comes from the National Center of Biotechnology Information (NCBI)'s RefSeq. RefSeq provides entire annotated genomes in the form of a FASTA file and a GFF file.
+
+More specifically, we used the \textit{Saccharomyces cerevisiae} genome\cite{scerevisiae_s288c_r64}. It served as an ideal genome for initial model development, because it is both well annotated and reasonable in size. We avoided the use of a larger genome, largely because the time complexity of the forward, backward, and Viterbi algorithms would make training incredibly time consuming on a massive dataset.
+
+\subsection{Processing}
+Our data was processed using the \verb|gffutils| and \verb|biopython| libraries. The NCBI page provides the \verb|.fasta| file, which encodes the entire genome, and the \verb|.gff| file, which provides annotation on DNA structures.
+
+To create the training data, we labeled each 3-mer in the genome as coding or noncoding. A 3-mer was considered coding if the central nucleotide was present within a sequence with feature "CDS" in the \verb|.gff| file. Then, each 3-mer was written to a \verb|.csv| file which was used to train the model. We felt that a 3-mer served as a better observation than single nucleotides, because codons can signal the start and end for transcription sites. We check every k-mer, however, because it's not guaranteed that a NCS between two CDS would have a number of nucleotides which is divisible by 3 (i.e. checking \textit{only} each subsequent block of 3 nucleotides may miss a start codon, like a frameshift)
+
+\paragraph{Draft Note:} In the coming weeks we will try different k-mer sizes, as well as potentially labeling coding data differently or adding more states (e.g. instead of "coding" and "noncoding", perhaps "intron", "exon", "promoter", "UTR", etc.). For now, as a first draft, we felt that this was sufficient to gather feedback and develop upon.
+
+\section{Modeling and Inference}
+
+
+\section{Results and Discussion}
+
+
+\section{Conclusion}
+
+
+\section{Reflections \& Contributions}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \appendix
+
+% \section{Appendix / supplemental material}
+
+
+% Optionally include supplemental material (complete proofs, additional experiments and plots) in appendix.
+% All such materials \textbf{SHOULD be included in the main submission.}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{document}
