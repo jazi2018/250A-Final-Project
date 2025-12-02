@@ -176,7 +176,11 @@ $X_{1:T}$. This allows us to compare the predicted CDS/NCS hidden state
 against the ground-truth genome annotation and measure model accuracy.
 
 \subsection{Simplifications and Assumptions}
-Note that as a simplification, we assume each nucleotide is independent and identically distributed. This is not necessarily always true in reality, because certain parts of DNA sequences may have varying ratios of nucleotides (e.g. sequences whose GC content is higher.) But for this model, the IID assumption is not too large a leap in logic, and thus it will be applied to allow the application of a HMM.
+Note that as a simplification, we assume each 3-mer is independent and identically distributed. This assumption is necessary, as it allows us to apply the Viterbi algorithm by enabling conditional independence which is essential to the filling of the $\ell^*$ matrix. Without it, the calculation of columns past $t=1$
+\begin{align*}
+    \ell^*_{j,t+1} = P(s_1,...,s_t,S_{t+1}=j,o_1,...,o_{t+1})
+\end{align*}
+would not be easily simplified, and as such the calculation would be substantially more difficult, if possible.
 
 \section{Results and Discussion}
 
