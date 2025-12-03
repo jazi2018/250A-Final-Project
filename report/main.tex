@@ -87,7 +87,7 @@
 
 \section{Problem Description}
 
-A fundamental task in computational biology is to identify functional regions within genomic DNA. One of the most critical distinctions is between coding sequences (CDS) and noncoding sequences (NCS). CDS are eventually translated into proteins, while NCS includes sequences such as introns, UTRs, promoters, etc.
+A fundamental task in computational biology is to identify functional regions within genomic DNA, specifically predicting the probability of $k$ sequential nucleotides (k-mer) being part of a coding or noncoding region. Coding sequences (CDS) define the small percentage of DNA (approximately 1\%) that are converted into mRNA, and finally into amino acid sequences as proteins. Noncoding sequences (NCS), alternatively, make up about 99\% of our genome and are essential in the control of gene activity, including sequences such as introns, promoters, enhancers, etc.
 
 The accurate classification of these regions is important for many tasks in biological fields, such as comparative genomics, genome annotations, gene predictions, etc. Due to the prevalence of genomic DNA data sets, probablistic modeling is a great solution to learn to distinguish between CDS and NCS. Specifically we found this to be a great application for a Hidden Markov Model (HMM).
 
@@ -103,7 +103,7 @@ Our data was processed using the \verb|gffutils| and \verb|biopython| libraries.
 
 To create the training data, we labeled each 3-mer in the genome as coding or noncoding. A 3-mer was considered coding if the central nucleotide was present within a sequence with feature "CDS" in the \verb|.gff| file. Then, each 3-mer was written to a \verb|.csv| file which was used to train the model. We felt that a 3-mer served as a better observation than single nucleotides, because codons can signal the start and end for transcription sites. We check every k-mer, however, because it's not guaranteed that a NCS between two CDS would have a number of nucleotides which is divisible by 3 (i.e. checking \textit{only} each subsequent block of 3 nucleotides may miss a start codon, like a frameshift)
 
-\paragraph{Draft Note:} In the coming weeks we will try different k-mer sizes, as well as potentially labeling coding data differently or adding more states (e.g. instead of "coding" and "noncoding", perhaps "intron", "exon", "promoter", "UTR", etc.). For now, as a first draft, we felt that this was sufficient to gather feedback and develop upon.
+% \paragraph{Draft Note:} In the coming weeks we will try different k-mer sizes, as well as potentially labeling coding data differently or adding more states (e.g. instead of "coding" and "noncoding", perhaps "intron", "exon", "promoter", "UTR", etc.). For now, as a first draft, we felt that this was sufficient to gather feedback and develop upon.
 
 \section{Modeling and Inference}
 \subsection{Model Structure}
@@ -148,12 +148,12 @@ To create the training data, we labeled each 3-mer in the genome as coding or no
 
 \draw [decorate,decoration={brace,amplitude=5pt,raise=4pt}]
   (x1.north west) -- (x3.north east)
-  node[midway,above=8pt] {Observed nucleotide $X_t \in \{A,C,G,T\}$};
+  node[midway,above=8pt] {Observed nucleotide $X_t$};
 
 \end{tikzpicture}
 \vspace{-10pt}
 \end{wrapfigure}
-We develop a Hidden Markov Model (HMM) that accurately classifies a DNA sequence as a CDS or NCS. We apply an HMM because it reflects DNA structure well, since it contains a sequence of nucleotide observations ($X_t \in$ \{Adenine (A), Guanine (G), Cytosine (C), Thymine (T)\}) which have unique functions, reflected by the hidden states ($Z_t$). The structure of the observations are 3-mer sequences of nucleotides, $X_t,X_{t+1},X_{t+2}$, such as ACG or TGA. We follow the following conditional independence structure: \\
+We develop a Hidden Markov Model (HMM) that accurately classifies a DNA sequence as a CDS or NCS. We apply an HMM because it reflects DNA structure well, since the model takes in a sequence of 3-mer nucleotide observations ($X_t$ such as ACG, TGA, etc.) which have unique functions, reflected by the hidden states ($Z_t$). Each observation is pulled from a genome of length $L$, so that observation sequence length is $T=L{-}(k{-}1)$, and we iterate through the observations with each 3-mer per timestep. We follow the following conditional independence structure: \\
 \[
 P(Z_1) = \pi_{Z_1}, \qquad
 P(Z_t \mid Z_{1:t-1}) = P(Z_t \mid Z_{t-1}) = a_{Z_{t-1},Z_t},
@@ -197,10 +197,7 @@ sequence, decoding the most likely hidden-state sequence with the
 Viterbi algorithm. For our first sanity check, we compared predicted
 hidden-state labels against the ground-truth CDS and NCS labels from the
 annotation. This yielded an overall accuracy of around
-\(\mathbf{45\%}\) on the 3-mer sequence.
-(In the current version, we 
-evaluate on the same data used for fitting but in future work we plan on introducing a
-proper train/test split.)
+\(\mathbf{80\%}\) on the 3-mer sequence. We use an 80\% train and 20\% evaluate contiguous split to avoid test-train overlap.
 
 While \(45\%\) accuracy shows that the model is still learning, it's
 still far from our expectations so we're working towards improving it. Some reasons why our model performed this way could be the following:
