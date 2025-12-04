@@ -87,7 +87,7 @@
 
 \section{Problem Description}
 
-A fundamental task in computational biology is to identify functional regions within genomic DNA, specifically predicting the probability of $k$ sequential nucleotides (k-mer) being part of a coding or noncoding region. Coding sequences (CDS) define the small percentage of DNA (approximately 1\%) that are converted into mRNA, and finally into amino acid sequences as proteins. Noncoding sequences (NCS), alternatively, make up about 99\% of our genome and are essential in the control of gene activity, including sequences such as introns, promoters, enhancers, etc.
+A fundamental task in computational biology is to identify functional regions within genomic DNA, specifically predicting the probability of $k$ sequential nucleotides (k-mer) being part of a coding or noncoding region. Coding sequences (CDS) define the small percentage of DNA (approximately 1\% in humans\cite{zhao_encode_deciphering_2025}) that are converted into mRNA, and finally into amino acid sequences as proteins. Noncoding sequences (NCS), alternatively, make up about 99\% of our genome and are essential in the control of gene activity, including sequences such as introns, promoters, enhancers, etc.
 
 The accurate classification of these regions is important for many tasks in biological fields, such as comparative genomics, genome annotations, gene predictions, etc. Due to the prevalence of genomic DNA data sets, probablistic modeling is a great solution to learn to distinguish between CDS and NCS. Specifically we found this to be a great application for a Hidden Markov Model (HMM).
 
@@ -162,12 +162,13 @@ P(Z_t \mid Z_{1:t-1}) = P(Z_t \mid Z_{t-1}) = a_{Z_{t-1},Z_t},
 P(X_t \mid Z_{1:t}, X_{1:t-1}) = P(X_t \mid Z_t) = b_{Z_t}(X_t),
 \]
 As shown above, the hidden state is initialized from a distribution, $\pi$. The transition and emission matrices are derived from the conditional independence relationship and are parametrized as $a_{Z_{t-1},Z_t}$ and $b_{Z_t}(X_t)$.
+
 \subsection{Inference/Learning Algorithm}
 Since our dataset is fully labeled with the true CDS/NCS state for each 3-mer,
 we train the HMM in a supervised manner. We use the
-\texttt{hmmlearn} library to compute maximum likelihood estimates of the
+\texttt{hmmlearn} library to initialize a model, specifically \texttt{CategoricalHMM}, which is suited well for binary prediction tasks such as this one. We manually calculate the
 initial distribution $\pi$, the transition matrix $A$, and the emission matrix
-$B$ from empirical counts in the training set.
+$B$ from empirical counts in the training set by computing the fraction of training samples that reflect some state, transition, or emission, respectively, and normalizing over the total number of observations in the training set.
 
 During evaluation on the test genome sequence, the true labels are hidden and
 must be inferred. We apply the Viterbi algorithm to compute the most probable
@@ -187,7 +188,7 @@ would not be easily simplified, and as such the calculation would be substantial
 Currently, we trained our preliminary HMM on the
 Saccharomyces cerevisiae 3-mer dataset described in Section 2.1.
 Each of our observations can be one of the 64 possible nucleotide 3-mers, with
-corresponding hidden states as CDS or NDS which indicate
+corresponding hidden states as CDS or NCS which indicate
 whether the central base in the 3-mer lies inside a coding region or a
 noncoding region according to the GFF annotation.
 
@@ -199,47 +200,42 @@ hidden-state labels against the ground-truth CDS and NCS labels from the
 annotation. This yielded an overall accuracy of around
 \(\mathbf{80\%}\) on the 3-mer sequence. We use an 80\% train and 20\% evaluate contiguous split to avoid test-train overlap.
 
-While \(45\%\) accuracy shows that the model is still learning, it's
-still far from our expectations so we're working towards improving it. Some reasons why our model performed this way could be the following:
-\begin{itemize}
-    \item \textbf{No explicit supervision in fitting:} Since we're using the default EM procedure in hmmlearn, which treats
-      the CDS/NCS state as latent during learning, the hidden states are
-      then aligned to the CDS and NCS labels only post hoc when computing
-      accuracy. This means that the model is not yet fully using the fact that
-      we have labeled training data.
-    \item \textbf{Class imbalance and simple structure:} Since the yeast genome
-      contains long stretches of noncoding sequence, this could mean that a trivial baseline that
-      always predicts ``noncoding'' can already achieve non-trivial accuracy.
-      Also, our current HMM only has two states and since we assume i.i.d.\ emissions given
-      the state, we assume it cannot yet capture richer patterns such as different
-      statistics in start/stop codons or UTR regions.
-    \item \textbf{Lack of proper evaluation protocol:} Since we currently train and
-      evaluate on the same 3-mer sequence this can inflate performance and
-      will not accurately reflect generalization to unseen genomic regions.
-\end{itemize}
+% While \(45\%\) accuracy shows that the model is still learning, it's
+% still far from our expectations so we're working towards improving it. Some reasons why our model performed this way could be the following:
+A previous model, which used EM (Baum-Welch) to learn the CPTs, obtained an accuracy of roughly 45\% on test data. Moving away from EM to explicit calculation of the CPTs has produced a significant improvement (almost twice as accurate). Still, there are some flaws in the model that could potentially be resolved.
 
-Despite this, our first draft confirms that the overall pipeline
-is functioning end-to-end. We can, (1), parse an annotated genome into labeled
-3-mers, (2), fit a two-state HMM with discrete emissions, and (3), run
-Viterbi decoding to obtain a CDS/NCS segmentation that can be compared
-quantitatively to the annotation. This allows for a clear path for more careful
-experiments in the next milestone.
+% \begin{itemize}
+%     \item \textbf{No explicit supervision in fitting:} Since we're using the default EM procedure in hmmlearn, which treats
+%       the CDS/NCS state as latent during learning, the hidden states are
+%       then aligned to the CDS and NCS labels only post hoc when computing
+%       accuracy. This means that the model is not yet fully using the fact that
+%       we have labeled training data.
+%     \item \textbf{Class imbalance and simple structure:} Since the yeast genome
+%       contains long stretches of noncoding sequence, this could mean that a trivial baseline that
+%       always predicts ``noncoding'' can already achieve non-trivial accuracy.
+%       Also, our current HMM only has two states and since we assume i.i.d.\ emissions given
+%       the state, we assume it cannot yet capture richer patterns such as different
+%       statistics in start/stop codons or UTR regions.
+%     \item \textbf{Lack of proper evaluation protocol:} Since we currently train and
+%       evaluate on the same 3-mer sequence this can inflate performance and
+%       will not accurately reflect generalization to unseen genomic regions.
+% \end{itemize}
 
-\subsection*{Planned Improvements}
+% Despite this, our first draft confirms that the overall pipeline
+% is functioning end-to-end. We can, (1), parse an annotated genome into labeled
+% 3-mers, (2), fit a two-state HMM with discrete emissions, and (3), run
+% Viterbi decoding to obtain a CDS/NCS segmentation that can be compared
+% quantitatively to the annotation. This allows for a clear path for more careful
+% experiments in the next milestone.
+
+\subsection*{Potential Improvements}
 
 To improve, we have some ideas:
 \begin{itemize}
-    \item Switching from unsupervised EM fitting to a supervised or
-      semi-supervised estimation using the labeled CDS/NCS
-      sequence to compute maximum-likelihood estimates of \(\pi\), \(A\), and
-      \(B\).
-    \item Introduce a proper train/validation/test split over the genome (such as holding out contiguous chromosomal segments) so that we can avoid overfitting to a single sequence and evaluate generalization.
-    \item Compare against simple baselines like majority-class predictor,
-      a logistic-regression classifier on 3-mer counts, or a Markov chain over
-      nucleotides without hidden states.
     \item Explore richer state spaces (separating introns, exons, and
-      UTRs) or switch between observation choices (longer k-mers) to see
+      UTRs) or switch between observation choices (longer k-mers or nucleotide observations) to see
       whether the HMM can better reflect biologically meaningful patterns in genome.
+      \item Alternatively, states could be expanded to a sequence of coding states (C1, C2, C3) which represent an individual nucleotide in a coding sequence. This has been applied previously with high accuracy to prokaryotic genomes\cite{Lukashin1998GeneMark}, and could easily be applied here as well.
 \end{itemize}
 
 \section{Conclusion}
@@ -250,14 +246,13 @@ constructed a labeled dataset of overlapping 3-mers from the
 S.cerevisiae reference genome and implemented an HMM whose two hidden
 states correspond to CDS and NCS. We used an hmmlearn based model,
 trained on the yeast 3-mer sequence and decoded with Viterbi, achieving around
-\(45\%\) accuracy when predicting CDS/NCS labels, which indicates that there is
+\(80\%\) accuracy when predicting CDS/NCS labels, which indicates that there is
 signal in the 3-mer distribution.
 
 Although the current results are limited and there is still room for improvement, the end-to-end pipeline from raw
 FASTA/GFF files to genome parsing, HMM construction, and Viterbi
-decoding gives us a solid starting area for fine tuning. By using supervised parameter
-estimation, more principled evaluation, and potentially richer state spaces
-and observation models, we aim to significantly improve CDS/NCS
+decoding gives us a solid starting area for fine tuning. In the future, we could potentially use richer state spaces
+and observation models to attempt to improve CDS/NCS
 classification performance and move closer to a biologically meaningful model
 of eukaryotic gene structure.
 
