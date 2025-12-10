@@ -265,19 +265,19 @@ $\Delta = P(X\mid \text{CDS}) - P(X\mid \text{NCS})$.
 \toprule
 3-mer & $P(X\mid \text{NCS})$ & $P(X\mid \text{CDS})$ & $\Delta$ \\
 \midrule
-CCA & 0.01027 & 0.01688 & +0.00662 \\
-CAC & 0.01036 & 0.01087 & +0.00051 \\
-CGA & 0.00532 & 0.00604 & +0.00072 \\
-CAA & 0.01984 & 0.02451 & +0.00467 \\
-ACA & 0.01829 & 0.01682 & $-0.00147$ \\
-TAA & 0.02786 & 0.01964 & $-0.00822$ \\
-TTA & 0.02779 & 0.02184 & $-0.00595$ \\
-TGG & 0.01898 & 0.02063 & +0.00165 \\
-GCA & 0.05026 & 0.03477 & $-0.01549$ \\
-TTT & 0.01037 & 0.01857 & +0.00820 \\
+AAA & 0.05046 & 0.03482 & $-0.01563$ \\
+TTT & 0.05026 & 0.03477 & $-0.01549$ \\
+ATA & 0.03412 & 0.02048 & $-0.01363$ \\
+TAT & 0.03396 & 0.02045 & $-0.01351$ \\
+TAA & 0.02786 & 0.01964 & $-0.00823$ \\
+TTA & 0.02779 & 0.01966 & $-0.00813$ \\
+CCA & 0.01027 & 0.01688 & $+0.00661$ \\
+TGG & 0.01024 & 0.01669 & $+0.00645$ \\
+CAA & 0.01984 & 0.02451 & $+0.00468$ \\
+TTG & 0.01984 & 0.02439 & $+0.00455$ \\
 \bottomrule
 \end{tabular}
-\caption{Top 3-mers with the largest absolute emission differences between CDS and NCS.}
+\caption{Top 3-mers by absolute emission difference between CDS and NCS, with $\Delta = P(X\mid\text{CDS}) - P(X\mid\text{NCS})$.}
 \label{tab:emissions-corrected}
 \end{table}
 
@@ -286,9 +286,15 @@ TTT & 0.01037 & 0.01857 & +0.00820 \\
 Several biologically interpretable patterns emerge:
 
 \begin{itemize}
-    \item Certain 3-mers (e.g.\ CCA, TTT) are strongly enriched in CDS.
-    \item Others (e.g.\ TAA, TTA, GCA) are enriched in NCS, consistent with AT-rich background sequence.
-    \item Because we extract overlapping 3-mers (stride 1), classical start and stop codons appear in both states; emissions capture statistical enrichment rather than reading-frame codon usage.
+    \item The most CDS-enriched 3-mers tend to contain more balanced GC content (e.g.\ CCA, TGG, CAA, TTG).  
+    These patterns are consistent with codon-usage constraints in coding regions, where nucleotide composition is shaped by amino-acid requirements and translational efficiency rather than background mutational tendencies.
+    
+    \item Start and stop codon triplets (TAA, TAG, TGA) do not necessarily indicate coding regions in this model, because our 3-mers are extracted with a stride of one nucleotide.  
+    As a result, these motifs often appear \emph{out of frame} inside annotated CDS segments and in NCS regions, so the HMM learns their statistical enrichment rather than their biological role as in-frame codons.
+    
+    \item The magnitude of CDS enrichment is smaller than that of NCS enrichment. 
+    This asymmetry arises because NCS comprises roughly 72\% of the genome: its emissions dominate the global 3-mer distribution, whereas CDS-specific signals must be inferred from a smaller portion of the data.
+
 \end{itemize}
 
 \subsection*{Failure Modes}
