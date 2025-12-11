@@ -185,33 +185,9 @@ would not be easily simplified, and as such the calculation would be substantial
 
 \section{Results and Discussion}
 
-Currently, we trained our preliminary HMM on the
-Saccharomyces cerevisiae 3-mer dataset described in Section 2.1.
-Each of our observations can be one of the 64 possible nucleotide 3-mers, with
-corresponding hidden states as CDS or NCS which indicate
-whether the central base in the 3-mer lies inside a coding region or a
-noncoding region according to the GFF annotation.
+We trained our HMM on the \textit{Saccharomyces cerevisiae} 3-mer dataset described in Section~2.1. Each observation $X_t$ is one of the 64 possible nucleotide 3-mers, and the hidden state $Z_t \in \{\text{NCS}, \text{CDS}\}$ indicates whether the central base of the 3-mer lies in a noncoding or coding region. In our implementation, state index 0 corresponds to NCS and index 1 corresponds to CDS.
 
-Using the hmmlearn library, we instantiated a two-state CategoricalHmm, that consists of 64 discrete emission categories corresponding
-to all possible 3-mers. We fit the model on the full yeast genome 3-mer
-sequence, decoding the most likely hidden-state sequence with the
-Viterbi algorithm. For our first sanity check, we compared predicted
-hidden-state labels against the ground-truth CDS and NCS labels from the
-annotation. This yielded an overall accuracy of around
-\(\mathbf{80\%}\) on the 3-mer sequence. We use an 80\% train and 20\% evaluate contiguous split to avoid test-train overlap.
-
-A previous model, which used EM (Baum-Welch) to learn the CPTs, obtained an accuracy of roughly 45\% on test data. Moving away from EM to explicit calculation of the CPTs has produced a significant improvement (almost twice as accurate). Still, there are some flaws in the model that could potentially be resolved.
-
-\section{Results and Discussion}
-
-We trained our HMM on the \textit{Saccharomyces cerevisiae} 3-mer dataset described in Section~2.1.
-Each observation $X_t$ is one of the 64 possible nucleotide 3-mers, and the hidden state
-$Z_t \in \{\text{NCS}, \text{CDS}\}$ indicates whether the central base of the 3-mer lies in a
-noncoding or coding region. In our implementation, state index 0 corresponds to NCS and index 1 corresponds to CDS.
-
-Using the \texttt{hmmlearn} library, we instantiated a two-state \texttt{CategoricalHMM}
-with 64 discrete emission categories. The model was trained on an 80\% contiguous split and evaluated
-on the remaining 20\%. The HMM achieves a test accuracy of \textbf{79.74\%}, substantially above simple baselines.
+Using the \texttt{hmmlearn} library, we instantiated a two-state \texttt{CategoricalHMM} with 64 discrete emission categories. The model was trained on an 80\% contiguous split and evaluated on the remaining 20\%. The HMM achieves a test accuracy of \textbf{79.74\%}, substantially above simple baselines.
 
 \subsection*{Baseline Comparisons}
 
@@ -283,57 +259,82 @@ TTG & 0.01984 & 0.02439 & $+0.00455$ \\
 
 % Add additional analysis of these specific codons and if they are meaningful (stop codon, etc.)
 
-Several biologically interpretable patterns emerge:
+Several interpretable patterns emerge:
 
 \begin{itemize}
-    \item The most CDS-enriched 3-mers tend to contain more balanced GC content (e.g.\ CCA, TGG, CAA, TTG).  
-    These patterns are consistent with codon-usage constraints in coding regions, where nucleotide composition is shaped by amino-acid requirements and translational efficiency rather than background mutational tendencies.
-    
-    \item Start and stop codon triplets (TAA, TAG, TGA) do not necessarily indicate coding regions in this model, because our 3-mers are extracted with a stride of one nucleotide.  
-    As a result, these motifs often appear \emph{out of frame} inside annotated CDS segments and in NCS regions, so the HMM learns their statistical enrichment rather than their biological role as in-frame codons.
-    
-    \item The magnitude of CDS enrichment is smaller than that of NCS enrichment. 
-    This asymmetry arises because NCS comprises roughly 72\% of the genome: its emissions dominate the global 3-mer distribution, whereas CDS-specific signals must be inferred from a smaller portion of the data.
+    \item The most CDS-enriched 3-mers tend to exhibit more balanced GC content (e.g., CCA, TGG), which aligns with the known pattern of CDS regions containing higher GC content.
 
+    \item Start and stop codon triplets (TAA, TAG, TGA) do not reliably indicate coding regions in this model because 3-mers are extracted overlapping. These motifs frequently appear out of frame inside CDS and also within AT-rich NCS regions, leading the HMM to associate them more with background sequence composition than with true translational boundaries.
+
+    \item The magnitude of enrichment is larger for NCS-specific 3-mers than for CDS-specific ones. This arises because yeast NCS regions are strongly AT-rich and constitute the majority of the genome, producing larger deviations in their 3-mer distribution, whereas CDS regions are constrained by codon usage and therefore exhibit more moderate variation.
 \end{itemize}
+
 
 \subsection*{Failure Modes}
 
 Inspection of errors reveals that:
 \begin{itemize}
-    \item The model often delays switching into CDS, due to strong NCS self-transition probability.
-    \item Short exons are difficult to detect because local emissions do not overwhelm transition priors.
-    \item Rare 3-mers have nearly equal emission probabilities under both states, causing Viterbi to follow surrounding context rather than local evidence.
+    \item The model often delays switching into CDS, due to strong NCS self-transition probability as shown in Table~\ref{tab:boundary-errors}.
+    \item Short exons are difficult to detect because local emissions do not overwhelm transition priors as shown in Table~\ref{tab:boundary-errors} as well.
+    \item Rare 3-mers have nearly equal emission probabilities under both states, causing Viterbi to follow surrounding context rather than local observations as shown in Table~\ref{tab:delta-distribution}.
 \end{itemize}
 
-\subsection*{Error Analysis and Failure Modes}
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Distance bin & Position count & Mean error rate \\
+\midrule
+$[0, 1)$     & 2458    & 0.4858 \\
+$[1, 2)$     & 2454    & 0.4768 \\
+$[2, 3)$     & 2453    & 0.4737 \\
+$[3, 5)$     & 4904    & 0.4608 \\
+$[5, 10)$    & 12241   & 0.4432 \\
+$[10, 20)$   & 24403   & 0.4061 \\
+$[20, \infty)$ & 2{,}381{,}990 & 0.1977 \\
+\bottomrule
+\end{tabular}
+\caption{Mean HMM classification error as a function of distance to the nearest CDS/NCS boundary. Errors are highest near boundaries and decrease sharply with distance, quantitatively confirming that most misclassifications arise from delayed state switching.}
+\label{tab:boundary-errors}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{boundary_error_rate.png}
+\caption{
+Mean classification error as a function of distance from the nearest CDS/NCS boundary. Errors are highest close to the transition point and decrease rapidly with distance. Both CDS$\rightarrow$NCS and NCS$\rightarrow$CDS boundaries exhibit similar behavior, demonstrating that most misclassifications arise from delayed state switching.
+}
+\label{fig:boundary-error}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+Threshold $\tau$ & \% of 3-mers with $|\Delta| < \tau$ & Interpretation \\
+\midrule
+0.001 & 23.44\% & Almost no state distinction \\
+0.002 & 59.38\% & Majority are weakly informative \\
+0.005 & 87.50\% & Most emissions barely differ \\
+0.01  & 93.75\% & Nearly all 3-mers are nondiscriminative \\
+\bottomrule
+\end{tabular}
+\caption{Distribution of emission differences $|\Delta| = |P(X\mid \text{CDS}) - P(X\mid \text{NCS})|$. Most 3-mers exhibit very small differences, meaning emissions alone provide limited state information.}
+\label{tab:delta-distribution}
+\end{table}
+
+
+\subsection*{Error Analysis}
 
 % Going to add additional analysis about where errors occur, etc.
 
-Qualitatively inspecting misclassified positions reveals several systematic failure modes. First,
-many errors occur near CDS/NCS boundaries: the strong self-transition probabilities in
-Table~\ref{tab:transition} make the model conservative about switching states, so it sometimes
-delays entering a CDS segment or lingers in CDS for a few 3-mers past the true boundary. Second,
-short coding segments are often missed entirely, as there may be too little local evidence from the
-emissions to overcome the strong prior favoring long NCS runs. Third, errors are common for rare
-3-mers whose emission probabilities under CDS and NCS are very similar; in these cases, the posterior
-is dominated by the transitions and the model simply follows the majority state of the surrounding
-region.
+Qualitatively inspecting misclassified positions reveals several systematic failure modes. First, many errors occur near CDS/NCS boundaries: the strong self-transition probabilities in Table~\ref{tab:transition} make the model conservative about switching states, so it sometimes delays entering a CDS segment or lingers in CDS for a many 3-mers past the true boundary. Second, short coding segments are often missed entirely, as there may be too little local evidence from the emissions to overcome the strong prior favoring long NCS/CDS runs. Third, errors are common for rare 3-mers whose emission probabilities under CDS and NCS are very similar; in these cases, the posterior is dominated by the transitions and the model simply follows the majority state of the surrounding region.
 
 \subsection*{Generalization to a Related Genome}
 
-To test whether the learned parameters capture structure that generalizes beyond the training
-genome, we evaluated the same HMM on a different yeast species, \textit{Schizosaccharomyces pombe},
-using its annotated genome to construct 3-mer CDS/NCS labels as before. Interestingly, the same model
-achieves \(\mathbf{81.84\%}\) accuracy on \textit{S.~pombe}, slightly higher than on the held-out
-\textit{S.~cerevisiae} test split (79.74\%). This suggests that the HMM is not simply memorizing the
-training genome, but has learned coding versus noncoding sequence statistics that transfer across
-related eukaryotic species.
+To test whether the learned parameters capture structure that generalizes beyond the training genome, we evaluated the same HMM on a different yeast species, \textit{Schizosaccharomyces pombe}, using its annotated genome to construct 3-mer CDS/NCS labels as before. Interestingly, the same model achieves \(\mathbf{81.84\%}\) accuracy on \textit{S.~pombe}, slightly higher than on the held-out \textit{S.~cerevisiae} test split (79.74\%). This suggests that the HMM is not simply memorizing the training genome, but has learned coding versus noncoding sequence statistics that transfer across related eukaryotic species.
 
-A previous version of the model trained its CPTs with EM (Baum--Welch) and achieved only
-about 45\% accuracy on similar test data. Switching to supervised estimation of $\pi$, $A$, and $B$
-from labeled 3-mers and adding Viterbi decoding thus yields a substantial improvement in both
-performance and interpretability, while still exposing clear avenues for further refinement.
+A previous version of the model trained its CPTs with EM (Baum--Welch) and achieved only about 45\% accuracy on similar test data. Switching to supervised estimation of $\pi$, $A$, and $B$ from labeled 3-mers and adding Viterbi decoding thus yields a substantial improvement in both performance and interpretability, while still exposing clear avenues for further refinement.
 
 \subsection*{Potential Improvements}
 
@@ -350,57 +351,18 @@ To improve, we have some ideas:
 
 \section{Conclusion}
 
-In this project, we developed a probabilistic model for distinguishing coding
-and noncoding regions in the \textit{S.~cerevisiae} genome using a two-state
-Hidden Markov Model with 64 categorical emission states corresponding to all
-3-mers. Building an end-to-end pipeline—from parsing FASTA/GFF files, to
-constructing overlapping 3-mers, to estimating HMM parameters and decoding with
-Viterbi—allowed us to evaluate how much biological signal is contained at the
-3-mer level. The model achieves roughly \textbf{80\%} accuracy on held-out
-genomic regions and generalizes well to the \textit{S.~pombe} genome, suggesting
-that coding versus noncoding regions exhibit conserved statistical patterns that
-a simple HMM can detect.
+In this project, we developed a probabilistic model for distinguishing coding and noncoding regions in the \textit{S.~cerevisiae} genome using a two-state Hidden Markov Model with 64 categorical emission states corresponding to all 3-mers. Building an end-to-end pipeline (parsing FASTA/GFF files, constructing overlapping 3-mers, estimating HMM parameters and decoding with Viterbi) allowed us to evaluate how much biological signal is contained at the 3-mer level. The model achieves roughly \textbf{80\%} accuracy on held-out genomic regions and generalizes well to the \textit{S.~pombe} genome, suggesting that coding versus noncoding regions exhibit conserved statistical patterns that a simple HMM can detect.
 
-Beyond accuracy, the learned parameters provided additional insights. The
-transition matrix captured the long-run structure of genomic segments, assigning
-very high self-transition probabilities to both CDS and NCS states. The emission
-matrix highlighted specific 3-mers that are statistically enriched in coding
-regions and others enriched in noncoding regions, even though our overlapping
-3-mer extraction ignores reading-frame alignment. This reinforces that HMMs are
-useful not only as classifiers but also as interpretable models of sequence
-statistics.
+Beyond accuracy, the learned parameters provided additional insights. The transition matrix captured the long-run structure of genomic segments, assigning very high self-transition probabilities to both CDS and NCS states. The emission matrix highlighted specific 3-mers that are statistically enriched in coding regions and others enriched in noncoding regions, even though our overlapping 3-mer extraction ignores reading-frame alignment. This reinforces that HMMs are useful not only as classifiers but also as interpretable models of sequence statistics.
 
-While encouraging, these results also underscore the limitations of a
-two-state, memoryless emission model. The HMM cannot represent reading frames,
-start/stop patterns tied to codon position, or longer-range dependencies in
-gene structure. Future work could explore richer state spaces (e.g., C1/C2/C3
-coding phases), higher-order Markov models, or discriminative sequence models
-such as CRFs or RNNs. Incorporating biologically meaningful constraints or
-leveraging deep learning–based embeddings may further improve CDS/NCS
-segmentation accuracy.
+While encouraging, these results also underscore the limitations of a two-state, memoryless emission model. The HMM cannot represent reading frames, start/stop patterns tied to codon position, or longer-range dependencies in gene structure. Future work could explore richer state spaces (e.g., C1/C2/C3 coding phases), higher-order Markov models, or discriminative sequence models such as CRFs or RNNs. Incorporating biologically meaningful may further improve CDS/NCS segmentation accuracy.
 
-Overall, this project demonstrates that even a relatively simple probabilistic
-model can extract biologically relevant structure from genome sequences, while
-also pointing toward more expressive models needed to fully capture eukaryotic
-gene organization.
+Overall, this project demonstrates that even a relatively simple probabilistic model can extract biologically relevant structure from genome sequences, while also pointing toward more expressive models needed to fully capture eukaryotic gene organization.
 
 \section{Reflections \& Contributions}
-One interesting outcome of the project was discovering how much information is
-already encoded at the level of 3-mers, even without respecting reading frames.
-We expected that overlapping 3-mers would blur codon boundaries, but the HMM
-still learned meaningful enrichment patterns in CDS versus NCS regions. It was
-also surprising that a simple two-state HMM generalized well to a completely
-different yeast species, suggesting that fundamental coding biases are preserved
-across evolution. Inspecting the learned emission and transition probabilities
-made the model feel interpretable in a way that many modern machine learning
-approaches do not.
-
-From a modeling perspective, implementing the Viterbi decoder and examining
-failure cases was particularly illuminating. We observed that high
-self-transition probabilities made the model conservative near CDS/NCS
-boundaries, which helped denoise noisy emissions but also caused systematic
-boundary misclassifications. This highlighted the tension between biological
-realism, statistical smoothing, and model flexibility.
+One interesting outcome of the project was discovering how much information is already encoded at the level of 3-mers, even without respecting reading frames. A reading frame specifies how the nucleotide sequence is partitioned into non-overlapping codons for translation. Because we extract overlapping 3-mers rather than in-frame codons, most of our 3-mers do not correspond to biologically meaningful codons. Despite this, the HMM learned strong statistical differences between CDS and NCS regions.
+It was also surprising that a simple two-state HMM generalized well to a completely different yeast species, suggesting that fundamental coding biases are preserved across evolution. Inspecting the learned emission and transition probabilities made the model feel interpretable as well.
+From a modeling perspective, implementing the Viterbi decoder and examining failure cases was particularly illuminating. We observed that high self-transition probabilities made the model conservative near CDS/NCS boundaries, which helped denoise noisy emissions but also caused systematic boundary misclassifications. This highlighted the tension between biological realism, statistical smoothing, and model flexibility.
 
 For team contributions, Jared cleaned and setup the dataset and wrote problem description and data sourcing report sections. Tej setup the model, and trained/evaluated the HMM. Justin generated results/conclusion and wrote report for those sections. Conor setup the model/inference structure, class majority map baseline, and wrote several sections of the report/analysis. \\
 Gen AI was used to assist in the creation of the LaTex diagrams/equations. 
