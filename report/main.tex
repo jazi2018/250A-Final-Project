@@ -131,6 +131,7 @@ To create the training data, we labeled each 3-mer in the genome as coding or no
 % Transitions between hidden states
 \draw[->] (z1) -- (z2) node[midway,below] {$a_{ij}$};
 \draw[->] (z2) -- (z3) node[midway,below] {$a_{ij}$};
+\draw[->] (z3) -- ++(1.5,0);
 
 % Emissions
 \draw[->] (z1) -- (x1) node[midway,left] {$b_{Z_1}(X_1)$};
@@ -153,7 +154,7 @@ To create the training data, we labeled each 3-mer in the genome as coding or no
 \end{tikzpicture}
 \vspace{-10pt}
 \end{wrapfigure}
-We develop a Hidden Markov Model (HMM) that accurately classifies a DNA sequence as a CDS or NCS. We apply an HMM because it reflects DNA structure well, since the model takes in a sequence of 3-mer nucleotide observations ($X_t$ such as ACG, TGA, etc.) which have unique functions, reflected by the hidden states ($Z_t$). Each observation is pulled from a genome of length $L$, so that observation sequence length is $T=\frac{L}{3}$ (ignoring incomplete trailing nucleotides), and we iterate through the observations with each 3-mer per timestep. We follow the following conditional independence structure:
+We develop a Hidden Markov Model (HMM) that accurately classifies a DNA sequence as a CDS or NCS. We apply an HMM because it reflects DNA structure well, since the model takes in a sequence of 3-mer nucleotide observations ($X_t$ such as ACG, TGA, etc.) which have unique functions, reflected by the hidden states ($Z_t$). Each observation is pulled from a genome of length $L$, so that observation sequence length is $T=L-2$ (ignoring incomplete trailing nucleotides), and we iterate through the observations with each 3-mer per timestep. We follow the following conditional independence structure:
 \[
 P(Z_1) = \pi_{Z_1}, \qquad
 P(Z_t \mid Z_{1:t-1}) = P(Z_t \mid Z_{t-1}) = a_{Z_{t-1},Z_t},
